@@ -17,6 +17,8 @@ void HudRenderer::updateState(const UIState &s) {
     is_cruise_set = false;
     set_speed = SET_SPEED_NA;
     speed = 0.0;
+	leadSpeed = -1.0;  // ###NIZ###
+
     return;
   }
 
@@ -35,6 +37,14 @@ void HudRenderer::updateState(const UIState &s) {
   v_ego_cluster_seen = v_ego_cluster_seen || car_state.getVEgoCluster() != 0.0;
   float v_ego = v_ego_cluster_seen ? car_state.getVEgoCluster() : car_state.getVEgo();
   speed = std::max<float>(0.0f, v_ego * (is_metric ? MS_TO_KPH : MS_TO_MPH));
+  //###NIZ###
+  if (s.sm->updated("controlsState")){
+    if (s.sm->get("controlsState").getControlsState().hasLeadSpeed()){
+        leadSpeed = s.sm->get("controlsState").getControlsState().getLeadSpeed();
+    } else {
+        leadSpeed = -1.0;
+    }
+  } //###NIZ###
 }
 
 void HudRenderer::draw(QPainter &p, const QRect &surface_rect) {
@@ -49,6 +59,7 @@ void HudRenderer::draw(QPainter &p, const QRect &surface_rect) {
 
   drawSetSpeed(p, surface_rect);
   drawCurrentSpeed(p, surface_rect);
+  drawLeadSpeed(p,surface_rect); //###NIZ###
 
   p.restore();
 }
@@ -99,6 +110,20 @@ void HudRenderer::drawCurrentSpeed(QPainter &p, const QRect &surface_rect) {
   p.setFont(InterFont(66));
   drawText(p, surface_rect.center().x(), 290, is_metric ? tr("km/h") : tr("mph"), 200);
 }
+
+//###NIZ###
+void HudRenderer::drawLeadSpeed(QPainter &p, const QRect &surface_rect) {
+    QString leadSpeedStr;
+    if (leadSpeed >= 0) {
+        leadSpeedStr = QString::number(std::nearbyint(leadSpeed * (is_metric ? MS_TO_KPH : MS_TO_MPH)));
+    } else {
+        leadSpeedStr = "N/A";
+    }
+
+    p.setFont(InterFont(66, QFont::Bold));
+    drawText(p, surface_rect.width() / 4, 350, tr("Lead: ") + leadSpeedStr + (is_metric ? tr(" km/h") : tr(" mph")), 200);
+}
+//###NIZ###
 
 void HudRenderer::drawText(QPainter &p, int x, int y, const QString &text, int alpha) {
   QRect real_rect = p.fontMetrics().boundingRect(text);
